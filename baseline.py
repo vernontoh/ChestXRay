@@ -4,7 +4,7 @@
 The main CheXNet model implementation.
 """
 
-
+import re
 import os
 import numpy as np
 import torch
@@ -15,8 +15,7 @@ import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 from read_data import ChestXrayDataSet
 from sklearn.metrics import roc_auc_score
-import re 
-
+from tqdm import tqdm
 
 CKPT_PATH = 'baseline.pth.tar'
 N_CLASSES = 14
@@ -24,7 +23,7 @@ CLASS_NAMES = [ 'Atelectasis', 'Cardiomegaly', 'Effusion', 'Infiltration', 'Mass
                 'Pneumothorax', 'Consolidation', 'Edema', 'Emphysema', 'Fibrosis', 'Pleural_Thickening', 'Hernia']
 DATA_DIR = './ChestX-ray14/images'
 TEST_IMAGE_LIST = './ChestX-ray14/labels/test_list.txt'
-BATCH_SIZE = 64
+BATCH_SIZE = 4
 
 
 def main():
@@ -38,9 +37,9 @@ def main():
     if os.path.isfile(CKPT_PATH):
         print("=> loading checkpoint")
         # Code modified from torchvision densenet source for loading from pre .4 densenet weights.
-        checkpoint = torch.load(CKPT_PATH, map_location=torch.device('cpu'))
+        checkpoint = torch.load(CKPT_PATH)
         state_dict = checkpoint['state_dict']
-        remove_data_parallel = True # Change if you don't want to use nn.DataParallel(model)
+        remove_data_parallel = False # Change if you don't want to use nn.DataParallel(model)
 
         pattern = re.compile(
             r'^(.*denselayer\d+\.(?:norm|relu|conv))\.((?:[12])\.(?:weight|bias|running_mean|running_var))$')
@@ -82,15 +81,15 @@ def main():
 
     # switch to evaluate mode
     model.eval()
-
-    for i, (inp, target) in enumerate(test_loader):
-        target = target.cuda()
-        gt = torch.cat((gt, target), 0)
-        bs, n_crops, c, h, w = inp.size()
-        input_var = torch.autograd.Variable(inp.view(-1, c, h, w).cuda(), volatile=True)
-        output = model(input_var)
-        output_mean = output.view(bs, n_crops, -1).mean(1)
-        pred = torch.cat((pred, output_mean.data), 0)
+    with torch.no_grad():
+        for i, (inp, target) in tqdm(enumerate(test_loader)):
+            target = target.cuda()
+            gt = torch.cat((gt, target), 0)
+            bs, n_crops, c, h, w = inp.size()
+            input_var = torch.autograd.Variable(inp.view(-1, c, h, w).cuda(), volatile=True)
+            output = model(input_var)
+            output_mean = output.view(bs, n_crops, -1).mean(1)
+            pred = torch.cat((pred, output_mean.data), 0)
 
     AUROCs = compute_AUCs(gt, pred)
     AUROC_avg = np.array(AUROCs).mean()

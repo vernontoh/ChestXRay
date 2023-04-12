@@ -118,7 +118,7 @@ def train_model(model,train_dataloader,val_dataloader,device,n_epochs=5):
                     
                     
         
-def compute_AUCs(labels, pred):
+def compute_AUCs(gt, pred):
     """Computes Area Under the Curve (AUC) from prediction scores.
 
     Args:

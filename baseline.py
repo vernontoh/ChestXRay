@@ -15,6 +15,7 @@ import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 from read_data import ChestXrayDataSet
 from sklearn.metrics import roc_auc_score
+import re 
 
 
 CKPT_PATH = 'baseline.pth.tar'
@@ -36,7 +37,22 @@ def main():
 
     if os.path.isfile(CKPT_PATH):
         print("=> loading checkpoint")
-        checkpoint = torch.load(CKPT_PATH)
+        # Code modified from torchvision densenet source for loading from pre .4 densenet weights.
+        checkpoint = torch.load(CKPT_PATH, map_location=torch.device('cpu'))
+        state_dict = checkpoint['state_dict']
+        remove_data_parallel = True # Change if you don't want to use nn.DataParallel(model)
+
+        pattern = re.compile(
+            r'^(.*denselayer\d+\.(?:norm|relu|conv))\.((?:[12])\.(?:weight|bias|running_mean|running_var))$')
+        for key in list(state_dict.keys()):
+            match = pattern.match(key)
+            new_key = match.group(1) + match.group(2) if match else key
+            new_key = new_key[7:] if remove_data_parallel else new_key
+            state_dict[new_key] = state_dict[key]
+            # Delete old key only if modified.
+            if match or remove_data_parallel: 
+                del state_dict[key]
+
         model.load_state_dict(checkpoint['state_dict'])
         print("=> loaded checkpoint")
     else:

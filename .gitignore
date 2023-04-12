@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
+/ChestX-ray14/images/
 
 # C extensions
 *.so

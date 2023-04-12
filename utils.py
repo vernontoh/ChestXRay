@@ -109,7 +109,7 @@ def train_model(model,train_dataloader,val_dataloader,device,n_epochs=5):
                 ## Compute AUC
                 torch.save(model,f'model-checkpoint-{step+1}.pt')
             
-                AUROCs = compute_AUCs(gt, pred)
+                AUROCs = compute_AUCs(eval_dict['labels'], eval_dict['pred'])
                 AUROC_avg = np.array(AUROCs).mean()
                 print('The average AUROC is {AUROC_avg:.3f}'.format(AUROC_avg=AUROC_avg))
                 for i in range(N_CLASSES):

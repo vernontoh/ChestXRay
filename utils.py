@@ -21,6 +21,8 @@ DATA_DIR = 'ChestX-ray14/images'
 TEST_IMAGE_LIST = 'ChestX-ray14/labels/test_list.txt'
 TRAIN_IMAGE_LIST = 'ChestX-ray14/labels/train_list.txt'
 N_CLASSES = 14
+CLASS_NAMES = [ 'Atelectasis', 'Cardiomegaly', 'Effusion', 'Infiltration', 'Mass', 'Nodule', 'Pneumonia',
+                'Pneumothorax', 'Consolidation', 'Edema', 'Emphysema', 'Fibrosis', 'Pleural_Thickening', 'Hernia']
 
 
         

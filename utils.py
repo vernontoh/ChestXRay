@@ -71,7 +71,7 @@ def label_transform(labels):
     return new_labels
 
 
-def train_model(model,train_dataloader,val_dataloader,device,n_epochs=10,use_weight_loss=True):
+def train_model(model,train_dataloader,val_dataloader,device,n_epochs=10,use_weight_loss=True,save_model_steps=500):
     print("TRAINING START: ")
     pos_weight = torch.tensor([9.719982661465107,
                                  40.447330447330444,
@@ -101,6 +101,7 @@ def train_model(model,train_dataloader,val_dataloader,device,n_epochs=10,use_wei
     model = model.to(device)
     criterion = criterion.to(device)
     step = 0
+    
     for i in range(n_epochs):
         print(f"Epoch{i+1}:")
         for inputs, labels in tqdm(train_dataloader):
@@ -121,8 +122,12 @@ def train_model(model,train_dataloader,val_dataloader,device,n_epochs=10,use_wei
            
             step +=1
             
-            if (step+1)%100 == 0:
+            if (step+1)%save_model_steps == 0:
+        
                 torch.save(model,f'model-checkpoint-{step+1}.pt')
+                
+            if (step+1)%100 == 0:
+               
                 print(f"Training loss at {step+1} is :  {running_loss/100}")
                 running_loss = 0
 

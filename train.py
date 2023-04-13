@@ -16,9 +16,9 @@ from tqdm import tqdm
 
 def main():
     
-    train_dataloader,test_dataloader = load_dataset(batch_size=64)
-    model = torch.hub.load('pytorch/vision:v0.10.0', 'resnet50', pretrained=True)
-    model.fc = torch.nn.Linear(2048,14)
+    train_dataloader,test_dataloader = load_dataset(batch_size=32)
+    #model = torch.hub.load('pytorch/vision:v0.10.0', 'resnet50', pretrained=True)
+    model = NaiveConvolutionNetwork()
     train_model(model,train_dataloader,test_dataloader,device='cuda:1',n_epochs=10,use_weight_loss=True)
 
 if __name__ == "__main__":

@@ -6,6 +6,7 @@ import torch.backends.cudnn as cudnn
 import torchvision
 import torchvision.transforms as transforms
 from torch.optim.lr_scheduler import ReduceLROnPlateau
+from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import DataLoader
 from read_data import ChestXrayDataSet
 from sklearn.metrics import roc_auc_score
@@ -25,9 +26,9 @@ CLASS_NAMES = [ 'Atelectasis', 'Cardiomegaly', 'Effusion', 'Infiltration', 'Mass
 def load_dataset(batch_size=64):
     print("LOADING DATASET")
     trainTransforms = transforms.Compose([
-        transforms.Resize(256),
-        transforms.RandomCrop(224),
-        transforms.RandomRotation(15),
+        # transforms.Resize(256),
+        # transforms.RandomCrop(224),
+        # transforms.RandomRotation(15),
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
@@ -106,6 +107,8 @@ def train_model(model, train_dataloader, val_dataloader, device, n_epochs=10, us
     model = model.to(device)
     criterion = criterion.to(device)
     step = 0
+
+    writer = SummaryWriter()
     
     for i in range(n_epochs):
         print(f"Epoch{i+1}:")
@@ -128,6 +131,7 @@ def train_model(model, train_dataloader, val_dataloader, device, n_epochs=10, us
                 
             if (step + 1) % 100 == 0:
                 print(f"Training loss at {step + 1} is :  {running_loss / 100}")
+                writer.add_scalar('Loss/train', running_loss / 100, step + 1)
                 running_loss = 0
         
         torch.save(model,f'model-checkpoint-{i + 1}.pt')
@@ -137,6 +141,7 @@ def train_model(model, train_dataloader, val_dataloader, device, n_epochs=10, us
         print(f"Eval loss at epoch {i+1} is:{eval_dict['loss']}")
         print(f"Eval accuracy at {i+1} is:{eval_dict['acc']}")
         print(f"Eval f1 score at {i+1} is:{eval_dict['f1']}")
+        writer.add_scalar('Loss/valid', eval_dict['loss'], i + 1)
         
         ## Compute AUC
         AUROCs = compute_AUCs(eval_dict['labels'], eval_dict['logits'])
@@ -146,7 +151,10 @@ def train_model(model, train_dataloader, val_dataloader, device, n_epochs=10, us
             print('The AUROC of {} is {}'.format(CLASS_NAMES[i], AUROCs[i]))     
 
         # Reduce learning rate if plateau
-        scheduler.step(AUROC_avg)                                 
+        scheduler.step(AUROC_avg)                 
+
+        # Tensorboard logs
+                        
                     
         
 def compute_AUCs(gt, pred):

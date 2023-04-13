@@ -1,8 +1,3 @@
-
-
-
-
-
 import os
 import numpy as np
 import torch
@@ -26,33 +21,57 @@ CLASS_NAMES = [ 'Atelectasis', 'Cardiomegaly', 'Effusion', 'Infiltration', 'Mass
 
 
         
-def load_dataset(batch_size=128):
+def load_dataset(batch_size=64):
     print("LOADING DATASET")
+    normalize = transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    transCrop=224
+    transformList = []
+    transformList.append(transforms.RandomResizedCrop(transCrop))
+    transformList.append(transforms.RandomHorizontalFlip())
+    transformList.append(transforms.ToTensor())
+    transformList.append(normalize)      
+    transformSequence=transforms.Compose(transformList)
     test_dataset = ChestXrayDataSet(data_dir=DATA_DIR,
                                     image_list_file=TEST_IMAGE_LIST,
-                                    transform=transforms.Compose([
-                                        transforms.Resize(224),
-                                        transforms.ToTensor(),
-                                       transforms.Normalize([0.485, 0.456, 0.406],
-                                     [0.229, 0.224, 0.225])
-                                    ]))
+                                    transform=transformSequence)
+                                   
     train_dataset = ChestXrayDataSet(data_dir=DATA_DIR,
                                     image_list_file=TRAIN_IMAGE_LIST,
-                                    transform=transforms.Compose([
-                                        transforms.Resize(224),
-                                        transforms.ToTensor(),
-                                       transforms.Normalize([0.485, 0.456, 0.406],
-                                     [0.229, 0.224, 0.225])
-                                    ]))
+                                    transform=transformSequence)
     
     test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size,
                              shuffle=False)
     train_loader = DataLoader(dataset=train_dataset,batch_size=batch_size,shuffle=False)
     
+    
     return train_loader,test_loader
 
+def remove_none_of_the_above_class(new_labels):
+    # Remove the last column (the "None of the Above" class)
+    original_labels = new_labels[:, :-1]
+    
+    return original_labels
 
-def train_model(model,train_dataloader,val_dataloader,device,n_epochs=5):
+def label_transform(labels):
+    batch_size = labels.size(0)
+    num_classes = labels.size(1)
+    
+    # Create a new tensor of shape (batch_size, num_classes + 1)
+    new_labels = torch.zeros((batch_size, num_classes + 1))
+    
+    # Check if a row in the label tensor contains only zeros and set the new class accordingly
+    none_of_the_above_mask = torch.all(labels == 0, dim=1)
+    
+    # Copy the original labels to the new tensor
+    new_labels[:, :num_classes] = labels
+    
+    # Add the "None of the Above" class
+    new_labels[none_of_the_above_mask, num_classes] = 1
+    
+    return new_labels
+
+
+def train_model(model,train_dataloader,val_dataloader,device,n_epochs=10,use_weight_loss=True):
     print("TRAINING START: ")
     pos_weight = torch.tensor([9.719982661465107,
                                  40.447330447330444,
@@ -68,9 +87,12 @@ def train_model(model,train_dataloader,val_dataloader,device,n_epochs=5):
                                  66.5005931198102,
                                  33.122599704579024,
                                  493.92070484581495])
-    criterion =  torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
-    optimizer = torch.optim.Adam(model.parameters(),lr=0.001)
-    
+    if use_weight_loss:
+        criterion =  torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+    else:
+        criterion = torch.nn.BCEWithLogitsLoss()
+        
+    optimizer = torch.optim.Adam (model.parameters(), lr=0.0001, betas=(0.9, 0.999), eps=1e-08, weight_decay=1e-5)
     running_loss = 0
     n_examples = 0
    
@@ -82,10 +104,12 @@ def train_model(model,train_dataloader,val_dataloader,device,n_epochs=5):
     for i in range(n_epochs):
         print(f"Epoch{i+1}:")
         for inputs, labels in tqdm(train_dataloader):
-
+    
             inputs = inputs.to(device)
             labels = labels.to(device)
+            
             optimizer.zero_grad()
+            
             logits = model(inputs)
             loss = criterion(logits,labels)
 
@@ -98,11 +122,12 @@ def train_model(model,train_dataloader,val_dataloader,device,n_epochs=5):
             step +=1
             
             if (step+1)%100 == 0:
-                
+                torch.save(model,f'model-checkpoint-{step+1}.pt')
                 print(f"Training loss at {step+1} is :  {running_loss/100}")
                 running_loss = 0
 
             if (step+1)%500 == 0:
+                
                 eval_dict  = evaluate(model,val_dataloader,criterion,device)
                 
                 print(f"Eval loss at {step+1} is:{eval_dict['loss']}")
@@ -110,9 +135,9 @@ def train_model(model,train_dataloader,val_dataloader,device,n_epochs=5):
                 print(f"Eval f1 score at {step+1} is:{eval_dict['f1']}")
                 
                 ## Compute AUC
-                torch.save(model,f'model-checkpoint-{step+1}.pt')
+                
             
-                AUROCs = compute_AUCs(eval_dict['labels'], eval_dict['pred'])
+                AUROCs = compute_AUCs(eval_dict['labels'], eval_dict['logits'])
                 AUROC_avg = np.array(AUROCs).mean()
                 print('The average AUROC is {AUROC_avg:.3f}'.format(AUROC_avg=AUROC_avg))
                 for i in range(N_CLASSES):
@@ -151,6 +176,7 @@ def evaluate(model,val_dataloader,criterion,device):
     acc = torch.empty(14)
     all_predictions = torch.tensor([])
     all_labels = torch.tensor([])
+    all_logits = torch.tensor([])
     running_loss = 0
     model = model.to(device)
     criterion = criterion.to(device)
@@ -158,10 +184,10 @@ def evaluate(model,val_dataloader,criterion,device):
         for batch in tqdm(val_dataloader):
 
             inputs,labels = batch
-    
+            
             inputs = inputs.to(device)
             labels = labels.to(device)
-           
+                
             logits = model(inputs)
            
             
@@ -169,7 +195,9 @@ def evaluate(model,val_dataloader,criterion,device):
 
             probs = torch.sigmoid(logits)
             pred = (probs>0.5).float().cpu()
+            
             labels = labels.cpu()
+            all_logits = torch.cat((all_logits,logits.cpu()),axis=0)
             all_predictions = torch.cat((all_predictions,pred),axis=0)
             all_labels = torch.cat((all_labels,labels),axis=0)
 
@@ -177,11 +205,10 @@ def evaluate(model,val_dataloader,criterion,device):
 
    
     running_loss /= len(val_dataloader)
-   
     acc = accuracy_score(all_predictions,all_labels)
     f1 = f1_score(all_predictions,all_labels,average=None)
     
-    return {"pred":all_predictions,"acc":acc,"loss":running_loss,"labels":all_labels,"f1":f1}
+    return {"pred":all_predictions,"acc":acc,"loss":running_loss,"labels":all_labels,"f1":f1,"logits":all_logits}
 
 
 

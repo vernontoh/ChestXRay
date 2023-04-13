@@ -18,7 +18,7 @@ def main():
     
     train_dataloader,test_dataloader = load_dataset(batch_size=64)
     model = NaiveConvolutionNetwork()
-    train_model(model,train_dataloader,test_dataloader,device='cuda:1',n_epochs=3)
+    train_model(model,train_dataloader,test_dataloader,device='cuda',n_epochs=20)
 
 if __name__ == "__main__":
     main()

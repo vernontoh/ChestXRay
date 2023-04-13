@@ -21,6 +21,9 @@ DATA_DIR = 'ChestX-ray14/images'
 TEST_IMAGE_LIST = 'ChestX-ray14/labels/test_list.txt'
 TRAIN_IMAGE_LIST = 'ChestX-ray14/labels/train_list.txt'
 N_CLASSES = 14
+CLASS_NAMES = [ 'Atelectasis', 'Cardiomegaly', 'Effusion', 'Infiltration', 'Mass', 'Nodule', 'Pneumonia',
+                'Pneumothorax', 'Consolidation', 'Edema', 'Emphysema', 'Fibrosis', 'Pleural_Thickening', 'Hernia']
+
 
 
         
@@ -29,7 +32,7 @@ def load_dataset(batch_size=128):
     test_dataset = ChestXrayDataSet(data_dir=DATA_DIR,
                                     image_list_file=TEST_IMAGE_LIST,
                                     transform=transforms.Compose([
-                                        transforms.Resize(224),
+                                        # transforms.Resize(224),
                                         transforms.ToTensor(),
                                        transforms.Normalize([0.485, 0.456, 0.406],
                                      [0.229, 0.224, 0.225])
@@ -37,7 +40,10 @@ def load_dataset(batch_size=128):
     train_dataset = ChestXrayDataSet(data_dir=DATA_DIR,
                                     image_list_file=TRAIN_IMAGE_LIST,
                                     transform=transforms.Compose([
-                                        transforms.Resize(224),
+                                        # transforms.Resize(224),
+                                        transforms.Resize(256),
+                                        transforms.RandomCrop(224),
+                                        transforms.RandomRotation(15),
                                         transforms.ToTensor(),
                                        transforms.Normalize([0.485, 0.456, 0.406],
                                      [0.229, 0.224, 0.225])
@@ -66,8 +72,9 @@ def train_model(model,train_dataloader,val_dataloader,device,n_epochs=5):
                                  66.5005931198102,
                                  33.122599704579024,
                                  493.92070484581495])
+    # criterion =  torch.nn.BCEWithLogitsLoss()
     criterion =  torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
-    optimizer = torch.optim.Adam(model.parameters(),lr=0.001)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001, betas=(0.9, 0.999), eps=1e-08, weight_decay=1e-5)
     
     running_loss = 0
     n_examples = 0
@@ -100,21 +107,20 @@ def train_model(model,train_dataloader,val_dataloader,device,n_epochs=5):
                 print(f"Training loss at {step+1} is :  {running_loss/100}")
                 running_loss = 0
 
-            if (step+1)%500 == 0:
-                eval_dict  = evaluate(model,val_dataloader,criterion,device)
-                
-                print(f"Eval loss at {step+1} is:{eval_dict['loss']}")
-                print(f"Eval accuracy at {step+1} is:{eval_dict['acc']}")
-                print(f"Eval f1 score at {step+1} is:{eval_dict['f1']}")
-                
-                ## Compute AUC
-                torch.save(model,f'model-checkpoint-{step+1}.pt')
-            
-                AUROCs = compute_AUCs(eval_dict['labels'], eval_dict['pred'])
-                AUROC_avg = np.array(AUROCs).mean()
-                print('The average AUROC is {AUROC_avg:.3f}'.format(AUROC_avg=AUROC_avg))
-                for i in range(N_CLASSES):
-                    print('The AUROC of {} is {}'.format(CLASS_NAMES[i], AUROCs[i]))
+        eval_dict  = evaluate(model,val_dataloader,criterion,device)
+        
+        print(f"Eval loss at epoch {i + 1} is:{eval_dict['loss']}")
+        print(f"Eval accuracy at epoch {i + 1} is:{eval_dict['acc']}")
+        print(f"Eval f1 score at {i + 1} is:{eval_dict['f1']}")
+        
+        ## Compute AUC
+        torch.save(model,f'model-checkpoint-{i+1}.pt')
+    
+        AUROCs = compute_AUCs(eval_dict['labels'], eval_dict['pred'])
+        AUROC_avg = np.array(AUROCs).mean()
+        print('The average AUROC is {AUROC_avg:.3f}'.format(AUROC_avg=AUROC_avg))
+        for i in range(N_CLASSES):
+            print('The AUROC of {} is {}'.format(CLASS_NAMES[i], AUROCs[i]))
                     
                     
                     

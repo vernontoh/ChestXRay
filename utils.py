@@ -51,31 +51,6 @@ def load_dataset(batch_size=64):
     return train_loader, test_loader
 
 
-def remove_none_of_the_above_class(new_labels):
-    # Remove the last column (the "None of the Above" class)
-    original_labels = new_labels[:, :-1]
-    return original_labels
-
-
-def label_transform(labels):
-    batch_size = labels.size(0)
-    num_classes = labels.size(1)
-    
-    # Create a new tensor of shape (batch_size, num_classes + 1)
-    new_labels = torch.zeros((batch_size, num_classes + 1))
-    
-    # Check if a row in the label tensor contains only zeros and set the new class accordingly
-    none_of_the_above_mask = torch.all(labels == 0, dim=1)
-    
-    # Copy the original labels to the new tensor
-    new_labels[:, :num_classes] = labels
-    
-    # Add the "None of the Above" class
-    new_labels[none_of_the_above_mask, num_classes] = 1
-    
-    return new_labels
-
-
 def train_model(model, train_dataloader, val_dataloader, device, n_epochs=10, use_weight_loss=True):
     print("TRAINING START: ")
     pos_weight = torch.tensor([9.719982661465107,

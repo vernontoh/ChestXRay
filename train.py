@@ -1,4 +1,6 @@
 from model import NaiveConvolutionNetwork
+from models.resnet18 import ResNet18
+from models.densenet import DenseNet
 from utils import load_dataset,train_model
 import os
 import numpy as np
@@ -15,10 +17,10 @@ from tqdm import tqdm
 
 
 def main():
-    train_dataloader,test_dataloader = load_dataset(batch_size=128)
+    train_dataloader,test_dataloader = load_dataset(batch_size=64)
     #model = torch.hub.load('pytorch/vision:v0.10.0', 'resnet50', pretrained=True)
-    model = NaiveConvolutionNetwork()
-    train_model(model, train_dataloader, test_dataloader, device='cuda', n_epochs=20, use_weight_loss=True)
+    model = DenseNet()
+    train_model(model, train_dataloader, test_dataloader, device='cuda', n_epochs=30, use_weight_loss=True)
 
 if __name__ == "__main__":
     main()

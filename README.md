@@ -27,7 +27,6 @@ out = model(test_input)
 print(out)
 ```
 
-
 ## Training XvT from scratch
 
 ```
@@ -37,3 +36,18 @@ python train_xvt.py --device mps \
 ```
 
 Model and training configurations can be further adjusted by making changes in the `XvT/configuration_xvt.py` file.
+
+
+## Training other models from scratch
+
+1. In the main() function of train.py, define your model of choice
+```
+def main():
+    train_dataloader, val_dataloader, test_dataloader = load_dataset(batch_size=64)
+    model = ResNet()
+    train_model(model, train_dataloader, val_dataloader, device='cuda', n_epochs=40, use_weight_loss=True)
+```
+2. Run train.py
+```
+python train.py
+```

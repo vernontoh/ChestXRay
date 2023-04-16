@@ -1,7 +1,7 @@
 from models.naive_cnn import NaiveConvolutionNetwork
 from models.resnet import ResNet
 from models.densenet import DenseNet
-
+from models.Unetencoderclassifier import UnetEncoderClassification
 from utils import load_dataset, train_model
 
 import os
@@ -33,6 +33,7 @@ def main():
     )
     # model = ResNet()
     # model = NaiveConvolutionNetwork()
+    # model = UnetEncoderClassification()
     train_model(model, train_dataloader, val_dataloader, device='cuda', n_epochs=40, use_weight_loss=True)
 
 if __name__ == "__main__":

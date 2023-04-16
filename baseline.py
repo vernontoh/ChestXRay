@@ -23,7 +23,7 @@ CLASS_NAMES = [ 'Atelectasis', 'Cardiomegaly', 'Effusion', 'Infiltration', 'Mass
                 'Pneumothorax', 'Consolidation', 'Edema', 'Emphysema', 'Fibrosis', 'Pleural_Thickening', 'Hernia']
 DATA_DIR = './ChestX-ray14/images'
 TEST_IMAGE_LIST = './ChestX-ray14/labels/test_list.txt'
-BATCH_SIZE = 4
+BATCH_SIZE = 16
 
 
 def main():
@@ -63,15 +63,11 @@ def main():
     test_dataset = ChestXrayDataSet(data_dir=DATA_DIR,
                                     image_list_file=TEST_IMAGE_LIST,
                                     transform=transforms.Compose([
-                                        transforms.Resize(256),
-                                        transforms.TenCrop(224),
-                                        transforms.Lambda
-                                        (lambda crops: torch.stack([transforms.ToTensor()(crop) for crop in crops])),
-                                        transforms.Lambda
-                                        (lambda crops: torch.stack([normalize(crop) for crop in crops]))
+                                        transforms.ToTensor(),
+                                        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
                                     ]))
     test_loader = DataLoader(dataset=test_dataset, batch_size=BATCH_SIZE,
-                             shuffle=False, num_workers=8, pin_memory=True)
+                             shuffle=False, num_workers=1, pin_memory=True)
 
     # initialize the ground truth and output tensor
     gt = torch.FloatTensor()
@@ -85,12 +81,12 @@ def main():
         for i, (inp, target) in tqdm(enumerate(test_loader)):
             target = target.cuda()
             gt = torch.cat((gt, target), 0)
-            bs, n_crops, c, h, w = inp.size()
-            input_var = torch.autograd.Variable(inp.view(-1, c, h, w).cuda(), volatile=True)
+            input_var = inp.cuda()
             output = model(input_var)
-            output_mean = output.view(bs, n_crops, -1).mean(1)
-            pred = torch.cat((pred, output_mean.data), 0)
+            pred = torch.cat((pred, output), 0)
 
+    print(f'GT shape: {gt.shape}')
+    print(f'Preds shape: {pred.shape}')
     AUROCs = compute_AUCs(gt, pred)
     AUROC_avg = np.array(AUROCs).mean()
     print('The average AUROC is {AUROC_avg:.3f}'.format(AUROC_avg=AUROC_avg))

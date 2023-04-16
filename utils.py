@@ -16,19 +16,20 @@ from tqdm import tqdm
 
 DATA_DIR = 'ChestX-ray14/images'
 TEST_IMAGE_LIST = 'ChestX-ray14/labels/test_list.txt'
+VAL_IMAGE_LIST = 'ChestX-ray14/labels/val_list.txt'
 TRAIN_IMAGE_LIST = 'ChestX-ray14/labels/train_list.txt'
 N_CLASSES = 14
 CLASS_NAMES = [ 'Atelectasis', 'Cardiomegaly', 'Effusion', 'Infiltration', 'Mass', 'Nodule', 'Pneumonia',
                 'Pneumothorax', 'Consolidation', 'Edema', 'Emphysema', 'Fibrosis', 'Pleural_Thickening', 'Hernia']
 
-
         
 def load_dataset(batch_size=64):
     print("LOADING DATASET")
     trainTransforms = transforms.Compose([
-        # transforms.Resize(256),
-        # transforms.RandomCrop(224),
-        # transforms.RandomRotation(15),
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    ])
+    valTransforms = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
@@ -40,35 +41,39 @@ def load_dataset(batch_size=64):
                                     image_list_file=TEST_IMAGE_LIST,
                                     transform=testTransforms)
                                    
+    val_dataset = ChestXrayDataSet(data_dir=DATA_DIR,
+                                image_list_file=VAL_IMAGE_LIST,
+                                transform=valTransforms)
+
     train_dataset = ChestXrayDataSet(data_dir=DATA_DIR,
                                     image_list_file=TRAIN_IMAGE_LIST,
                                     transform=trainTransforms)
     
-    test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size,
-                             shuffle=False)
-    train_loader = DataLoader(dataset=train_dataset,batch_size=batch_size,shuffle=False)
+    test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size,shuffle=False)
+    val_loader = DataLoader(dataset=val_dataset, batch_size=batch_size,shuffle=False)
+    train_loader = DataLoader(dataset=train_dataset,batch_size=batch_size,shuffle=True)
     
-    return train_loader, test_loader
+    return train_loader, val_loader, test_loader
 
 
-def train_model(model, train_dataloader, val_dataloader, device, n_epochs=10, use_weight_loss=True):
+def train_model(model, train_dataloader, val_dataloader, device, n_epochs=20, use_weight_loss=True):
     print("TRAINING START: ")
     pos_weight = torch.tensor([9.719982661465107,
-                                 40.447330447330444,
-                                 8.425640640264522,
-                                 5.6423934376729905,
-                                 19.512704490080054,
-                                 17.73208919816543,
-                                 82.86770140428678,
-                                 21.162702906757268,
-                                 24.023998285836726,
-                                 48.68432479374729,
-                                 44.56279809220986,
-                                 66.5005931198102,
-                                 33.122599704579024,
-                                 493.92070484581495])
+                                40.447330447330444,
+                                8.425640640264522,
+                                5.6423934376729905,
+                                19.512704490080054,
+                                17.73208919816543,
+                                82.86770140428678,
+                                21.162702906757268,
+                                24.023998285836726,
+                                48.68432479374729,
+                                44.56279809220986,
+                                66.5005931198102,
+                                33.122599704579024,
+                                493.92070484581495])
     if use_weight_loss:
-        criterion =  torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+        criterion = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
     else:
         criterion = torch.nn.BCEWithLogitsLoss()
         
@@ -87,6 +92,7 @@ def train_model(model, train_dataloader, val_dataloader, device, n_epochs=10, us
     
     for i in range(n_epochs):
         print(f"Epoch{i+1}:")
+        model.train()
         for inputs, labels in tqdm(train_dataloader):
     
             inputs = inputs.to(device)
@@ -187,14 +193,10 @@ def evaluate(model,val_dataloader,criterion,device):
             all_predictions = torch.cat((all_predictions,pred),axis=0)
             all_labels = torch.cat((all_labels,labels),axis=0)
 
-            running_loss +=loss.item() 
+            running_loss += loss.item() 
 
    
     running_loss /= len(val_dataloader)
     acc = accuracy_score(all_predictions,all_labels)
     f1 = f1_score(all_predictions,all_labels,average=None)
-    
     return {"pred":all_predictions,"acc":acc,"loss":running_loss,"labels":all_labels,"f1":f1,"logits":all_logits}
-
-
-

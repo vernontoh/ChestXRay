@@ -127,6 +127,7 @@ def train_model(model, train_dataloader, val_dataloader, device, n_epochs=20, us
         ## Compute AUC
         AUROCs = compute_AUCs(eval_dict['labels'], eval_dict['logits'])
         AUROC_avg = np.array(AUROCs).mean()
+        writer.add_scalar('AUROCs', AUROC_avg, i + 1)
         print('The average AUROC is {AUROC_avg:.3f}'.format(AUROC_avg=AUROC_avg))
         for i in range(N_CLASSES):
             print('The AUROC of {} is {}'.format(CLASS_NAMES[i], AUROCs[i]))     

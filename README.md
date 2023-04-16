@@ -6,6 +6,11 @@
 pip install -r requirements.txt
 ```
 
+## Downloading the dataset
+The dataset used for training, validation and testing can be found here:  
+`https://nihcc.app.box.com/v/ChestXray-NIHCC/folder/36938765345`
+
+
 ## Model architectures
 1. CNN
 2. DenseNet

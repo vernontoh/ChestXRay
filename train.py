@@ -23,12 +23,13 @@ from tqdm import tqdm
 def main():
     train_dataloader, val_dataloader, test_dataloader = load_dataset(batch_size=64)
     model = DenseNet(
-        growth_rate=16,
-        block_config=(4, 8, 12, 8),
-        n_init_features=32,
+        growth_rate=24,
+        block_config=(4, 8, 16, 12),
+        n_init_features=48,
         bn_size=4,
         drop_rate=0,
-        n_classes=14
+        n_classes=14,
+        memory_efficient=False
     )
     # model = ResNet()
     # model = NaiveConvolutionNetwork()

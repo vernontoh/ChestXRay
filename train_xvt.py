@@ -1,19 +1,10 @@
 from models.naive_cnn import NaiveConvolutionNetwork
 from utils_xvt import load_dataset,train_model
 
-import modeling_lightweight_xvt
-import modeling_lightweight_xvt_v2
-import configuration_xvt
-import importlib
-importlib.reload(modeling_lightweight_xvt)
-importlib.reload(modeling_lightweight_xvt_v2)
-importlib.reload(configuration_xvt)
-
-# from modeling_xvt import XvtForImageClassification
-# from modeling_lightweight_xvt import XvtForImageClassification
-from modeling_lightweight_xvt_v2 import XvtForImageClassification  # added dropout layers
-from configuration_xvt import XvtConfig
-from configuration_xvt import XvtScheduler
+# from XvT.modeling_lightweight_xvt import XvtForImageClassification
+from XvT.modeling_lightweight_xvt_v2 import XvtForImageClassification  # added dropout layers
+from XvT.configuration_xvt import XvtConfig
+from XvT.configuration_xvt import XvtScheduler
 
 
 

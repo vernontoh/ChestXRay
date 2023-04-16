@@ -81,6 +81,7 @@ def train_model(model, train_dataloader, val_dataloader, test_dataloader, args, 
     else:
         criterion = torch.nn.BCEWithLogitsLoss()
 
+    # intialize our optimizer and learning rate scheduler
     optimizer = torch.optim.AdamW(model.parameters(), lr=0.00025, weight_decay=0.05)
     lr_scheduler, _ = create_scheduler(args, optimizer=optimizer)
     lr_scheduler.step(0)
@@ -91,8 +92,10 @@ def train_model(model, train_dataloader, val_dataloader, test_dataloader, args, 
     criterion = criterion.to(device)
     step = 0
 
+    # writer will output to ./runs/ directory by default
     writer = SummaryWriter()
     
+    # training loop
     for i in range(args.epochs):
         model.train()
         print(f"Epoch{i+1} / {args.epochs}:")
@@ -133,22 +136,6 @@ def train_model(model, train_dataloader, val_dataloader, test_dataloader, args, 
         print('The average AUROC is {AUROC_avg:.3f}'.format(AUROC_avg=AUROC_avg))
         for n in range(N_CLASSES):
             print('The AUROC of {} is {}'.format(CLASS_NAMES[n], AUROCs[n]))     
-
-
-        test_dict  = test(model,test_dataloader,criterion,device)
-        
-        print(f"Eval loss at epoch {i+1} is:{test_dict['loss']}")
-        print(f"Eval accuracy at {i+1} is:{test_dict['acc']}")
-        print(f"Eval f1 score at {i+1} is:{test_dict['f1']}")
-        writer.add_scalar('Loss/test', test_dict['loss'], i + 1)
-        
-        ## Compute AUC
-        AUROCs = compute_AUCs(test_dict['labels'], test_dict['logits'])
-        AUROC_avg = np.array(AUROCs).mean()
-        print('The average AUROC is {AUROC_avg:.3f}'.format(AUROC_avg=AUROC_avg))
-        for n in range(N_CLASSES):
-            print('The AUROC of {} is {}'.format(CLASS_NAMES[n], AUROCs[n]))
-
 
         # Reduce learning rate if plateau
         # scheduler.step(AUROC_avg)   
@@ -221,47 +208,3 @@ def evaluate(model,val_dataloader,criterion,device):
     f1 = f1_score(all_predictions,all_labels,average=None)
     
     return {"pred":all_predictions,"acc":acc,"loss":running_loss,"labels":all_labels,"f1":f1,"logits":all_logits}
-
-
-def test(model, test_dataloader, criterion, device):
-    
-    print("----- Testing ------")
-    
-    model.eval()
-    acc = torch.empty(14)
-    all_predictions = torch.tensor([])
-    all_labels = torch.tensor([])
-    all_logits = torch.tensor([])
-    running_loss = 0
-    model = model.to(device)
-    criterion = criterion.to(device)
-    with torch.no_grad(): ## Disable gradient
-        for batch in tqdm(test_dataloader):
-
-            inputs,labels = batch
-            
-            inputs = inputs.to(device)
-            labels = labels.to(device)
-                
-            logits = model(inputs)
-           
-            
-            loss = criterion(logits,labels)
-
-            probs = torch.sigmoid(logits)
-            pred = (probs>0.5).float().cpu()
-            
-            labels = labels.cpu()
-            all_logits = torch.cat((all_logits,logits.cpu()),axis=0)
-            all_predictions = torch.cat((all_predictions,pred),axis=0)
-            all_labels = torch.cat((all_labels,labels),axis=0)
-
-            running_loss +=loss.item() 
-
-   
-    running_loss /= len(test_dataloader)
-    acc = accuracy_score(all_predictions,all_labels)
-    f1 = f1_score(all_predictions,all_labels,average=None)
-    
-    return {"pred":all_predictions,"acc":acc,"loss":running_loss,"labels":all_labels,"f1":f1,"logits":all_logits}
-

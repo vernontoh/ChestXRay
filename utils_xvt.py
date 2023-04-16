@@ -5,7 +5,6 @@ import torch.nn as nn
 import torch.backends.cudnn as cudnn
 import torchvision
 import torchvision.transforms as transforms
-from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import DataLoader
 from read_data import ChestXrayDataSet
@@ -60,7 +59,7 @@ def load_dataset(batch_size=64):
     return train_loader, val_loader, test_loader
 
 
-def train_model(model, train_dataloader, val_dataloader, test_dataloader, args, device, use_weight_loss=True):
+def train_model(model, train_dataloader, val_dataloader, args, use_weight_loss=True):
     print("TRAINING START: ")
     pos_weight = torch.tensor([9.719982661465107,
                                  40.447330447330444,
@@ -88,8 +87,8 @@ def train_model(model, train_dataloader, val_dataloader, test_dataloader, args, 
 
     running_loss = 0
     
-    model = model.to(device)
-    criterion = criterion.to(device)
+    model = model.to(args.device)
+    criterion = criterion.to(args.device)
     step = 0
 
     # writer will output to ./runs/ directory by default
@@ -101,8 +100,8 @@ def train_model(model, train_dataloader, val_dataloader, test_dataloader, args, 
         print(f"Epoch{i+1} / {args.epochs}:")
         for inputs, labels in tqdm(train_dataloader):
     
-            inputs = inputs.to(device)
-            labels = labels.to(device)
+            inputs = inputs.to(args.device)
+            labels = labels.to(args.device)
             
             optimizer.zero_grad()
             
@@ -123,7 +122,7 @@ def train_model(model, train_dataloader, val_dataloader, test_dataloader, args, 
         
         torch.save(model,f'model-checkpoint-{i + 1}.pt')
 
-        eval_dict  = evaluate(model,val_dataloader,criterion,device)
+        eval_dict  = evaluate(model, val_dataloader, criterion, args.device)
         
         print(f"Eval loss at epoch {i+1} is:{eval_dict['loss']}")
         print(f"Eval accuracy at {i+1} is:{eval_dict['acc']}")
@@ -138,7 +137,6 @@ def train_model(model, train_dataloader, val_dataloader, test_dataloader, args, 
             print('The AUROC of {} is {}'.format(CLASS_NAMES[n], AUROCs[n]))     
 
         # Reduce learning rate if plateau
-        # scheduler.step(AUROC_avg)   
         lr_scheduler.step(epoch=i+1)              
 
         # Tensorboard logs
@@ -167,7 +165,7 @@ def compute_AUCs(gt, pred):
 
 
 
-def evaluate(model,val_dataloader,criterion,device):
+def evaluate(model, val_dataloader, criterion, device):
     
     print("----- Evaluating ------")
     

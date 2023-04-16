@@ -27,23 +27,35 @@ class XvtConfig():
             The padding size for key and value in attention layer
         stride_qkv (`int`, *optional*, defaults to `1`):
             The stride size for key and value in attention layer
+        drop_rate (`float`, *optional*, defaults to `0.3`):
+            The dropout rate for dropout layers in the model.
     """
     def __init__(
         self,
 	    num_labels=14,
         num_channels=3,
-        num_heads=3,        #1,3,6
-        num_layers=6,       #1,2,10
-        patch_size=14,       #7,3,3
-        patch_stride=14,     #4,2,2
-        patch_padding=0,    #2,1,1
-        embed_dim=192,       #64,192,384 
-        mlp_ratio=4.0,      #4,4,4
-        kernel_qkv=3,       #3 (fixed)
-        padding_qkv=1,      #1 (fixed)
-        stride_qkv=1,       #1 (fixed)
-        drop_rate=0.3
+        num_heads=3,       
+        num_layers=6,      
+        patch_size=14,     
+        patch_stride=14,    
+        patch_padding=0,    
+        embed_dim=192,       
+        mlp_ratio=4.0,   
+        kernel_qkv=3,      
+        padding_qkv=1,      
+        stride_qkv=1,       
+        drop_rate=0.3,
+        sched='cosine',
+        warmup_epochs=2,
+        warmup_lr=0.000001,
+        min_lr=0.00001,
+        cooldown_epochs=4,
+        decay_rate=0.1,
+        epochs=40,
+        device="cpu",
+        batch_size=128
    ):
+        # configs for model
         self.num_labels = num_labels
         self.num_channels = num_channels
         self.num_heads = num_heads
@@ -58,16 +70,7 @@ class XvtConfig():
         self.stride_qkv = stride_qkv
         self.drop_rate = drop_rate
 
-class XvtScheduler():
-    def __init__(self,
-                sched='cosine',
-                warmup_epochs=2,
-                warmup_lr=0.000001,
-                min_lr=0.00001,
-                cooldown_epochs=4,
-                decay_rate=0.1,
-                epochs=40
-    ):
+        # configs for training
         self.sched = sched
         self.warmup_epochs = warmup_epochs
         self.warmup_lr = warmup_lr
@@ -75,6 +78,5 @@ class XvtScheduler():
         self.cooldown_epochs = cooldown_epochs
         self.decay_rate = decay_rate
         self.epochs = epochs
-
-        
-        
+        self.device = device
+        self.batch_size = batch_size

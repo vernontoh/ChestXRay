@@ -1,7 +1,8 @@
-from model import NaiveConvolutionNetwork
-from models.resnet18 import ResNet18
+from configuration_xvt import XvtScheduler
+from models.naive_cnn import NaiveConvolutionNetwork
+from models.resnet import ResNet
 from models.densenet import DenseNet
-from utils import load_dataset,train_model
+from utils_xvt import load_dataset, train_model
 import os
 import numpy as np
 import torch
@@ -17,10 +18,19 @@ from tqdm import tqdm
 
 
 def main():
-    train_dataloader,test_dataloader = load_dataset(batch_size=64)
-    #model = torch.hub.load('pytorch/vision:v0.10.0', 'resnet50', pretrained=True)
-    model = DenseNet()
-    train_model(model, train_dataloader, test_dataloader, device='cuda', n_epochs=30, use_weight_loss=True)
+    train_dataloader, val_dataloader, test_dataloader = load_dataset(batch_size=64)
+    args = XvtScheduler()
+    model = DenseNet(
+        growth_rate=16,
+        block_config=(4, 8, 12, 8),
+        n_init_features=32,
+        bn_size=4,
+        drop_rate=0,
+        n_classes=14
+    )
+    # model = ResNet()
+    # model = NaiveConvolutionNetwork()
+    train_model(model, train_dataloader, val_dataloader, test_dataloader, args, device='cuda', use_weight_loss=True)
 
 if __name__ == "__main__":
     main()

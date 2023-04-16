@@ -1,4 +1,4 @@
-from model import NaiveConvolutionNetwork
+from models.naive_cnn import NaiveConvolutionNetwork
 from utils_xvt import load_dataset,train_model
 import os
 import numpy as np

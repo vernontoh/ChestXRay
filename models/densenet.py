@@ -14,15 +14,14 @@ class Transition(nn.Sequential):
 
 
 class DenseLayer(nn.Module):
-    def __init__(self, num_input_features, growth_rate, bn_size, drop_rate, memory_efficient=False):
+    def __init__(self, num_input_features, growth_rate, bn_size, dropout_rate):
         super(DenseLayer, self).__init__()
         self.relu = nn.ReLU(inplace=True)
         self.norm1 = nn.BatchNorm2d(num_input_features)
         self.conv1 = nn.Conv2d(num_input_features, bn_size * growth_rate, kernel_size=1, stride=1, bias=False)
         self.norm2 = nn.BatchNorm2d(bn_size * growth_rate)
         self.conv2 = nn.Conv2d(bn_size * growth_rate, growth_rate, kernel_size=3, stride=1, padding=1, bias=False)
-        self.dropout = nn.Dropout(drop_rate)
-        self.memory_efficient = memory_efficient
+        self.dropout = nn.Dropout(dropout_rate)
 
     def forward(self, input):
         if isinstance(input, Tensor):
@@ -38,7 +37,7 @@ class DenseLayer(nn.Module):
     
 
 class DenseBlock(nn.Module):
-    def __init__(self, num_layers, num_input_features, bn_size, growth_rate, drop_rate=0, memory_efficient=False):
+    def __init__(self, num_layers, num_input_features, bn_size, growth_rate, dropout_rate=0):
         super(DenseBlock, self).__init__()
         layers = []
         for i in range(num_layers):
@@ -46,8 +45,7 @@ class DenseBlock(nn.Module):
                 num_input_features + i * growth_rate,
                 growth_rate=growth_rate,
                 bn_size=bn_size,
-                drop_rate=drop_rate,
-                memory_efficient=memory_efficient,
+                dropout_rate=dropout_rate
             )
             layers.append(layer)
 
@@ -63,7 +61,7 @@ class DenseBlock(nn.Module):
 
 class DenseNet(nn.Module):
     def __init__(self, growth_rate=24, block_config=(4, 8, 16, 12),
-                 n_init_features=48, bn_size=4, drop_rate=0, n_classes=14, memory_efficient=False):
+                 n_init_features=48, bn_size=4, dropout_rate=0, n_classes=14):
         super(DenseNet, self).__init__()
 
         # First conv layer
@@ -82,8 +80,7 @@ class DenseNet(nn.Module):
                 num_input_features=n_features,
                 bn_size=bn_size,
                 growth_rate=growth_rate,
-                drop_rate=drop_rate,
-                memory_efficient=memory_efficient
+                dropout_rate=dropout_rate
             )
             self.features.add_module('denseblock%d' % (i + 1), block)
             n_features = n_features + num_layers * growth_rate
